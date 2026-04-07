@@ -1,0 +1,73 @@
+name: long-context-summarization
+version: "1.0.0"
+description: >
+  An RL environment for training models to compress long documents into
+  compact summaries and then use those summaries to answer questions.
+  Inspired by Cursor's self-summarization approach (cursor.com/blog/self-summarization).
+author: "Hackathon Team"
+
+tasks:
+  - name: easy
+    description: "Short Wikipedia passage (300–700 chars). Truncated to 70%. Factual QA."
+    difficulty: easy
+    dataset: "rajpurkar/squad"
+    max_steps: 2
+    reward_range: [0.0, 1.0]
+    grader: token_f1
+
+  - name: medium
+    description: "Longer Wikipedia passage (900–2500 chars). Truncated to 65%. Factual QA."
+    difficulty: medium
+    dataset: "rajpurkar/squad"
+    max_steps: 2
+    reward_range: [0.0, 1.0]
+    grader: token_f1
+
+  - name: hard
+    description: >
+      Long scientific paper (QASPER, 2000–10000 chars). Truncated to 55%,
+      split into two chunks. Chained summarization (3 steps): summarize chunk1,
+      update summary with chunk2, then answer.
+    difficulty: hard
+    dataset: "allenai/qasper"
+    max_steps: 3
+    reward_range: [0.0, 1.0]
+    grader: token_f1
+
+endpoints:
+  reset: "POST /reset"
+  step: "POST /step"
+  state: "GET /state"
+  health: "GET /health"
+  schema: "GET /schema"
+
+action_space:
+  type: text
+  description: "Free-form text response (summary or answer)"
+
+observation_space:
+  messages:
+    type: "array of {role, content} dicts"
+    description: "Full conversation history in OpenAI chat format"
+  step_type:
+    type: string
+    values: ["summarize", "update_summary", "answer", "done"]
+  task_name:
+    type: string
+    values: ["easy", "medium", "hard"]
+  context_length:
+    type: integer
+    description: "Total context length in characters"
+  truncation_ratio:
+    type: float
+    description: "Fraction of context shown to the model (0.55–0.70)"
+  done:
+    type: boolean
+  reward:
+    type: float
+    range: [0.0, 1.0]
+    description: "Token-level F1 score (null until final step)"
+
+reward_shaping:
+  primary: "Token-level F1 score between predicted answer and ground-truth answers"
+  conciseness_bonus: "Up to +0.05 for summaries under 150 words when the answer is correct"
