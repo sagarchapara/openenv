@@ -26,4 +26,4 @@ server = "server.app:main"
 py-modules = ["client", "inference", "models"]
 
 [tool.setuptools.packages.find]
-include = ["server", "tasks", "graders"]
+include = ["server", "tasks", "graders", "data"]

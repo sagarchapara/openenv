@@ -132,6 +132,64 @@ References:
 
 ---
 
+## Labeling Pipeline
+
+The repository now includes a separate labeling-pipeline implementation that can assign `easy`,
+`medium`, or `hard` to candidate samples automatically instead of relying only on hand-authored
+task buckets.
+
+The idea is:
+
+1. ingest candidate samples from one or more datasets,
+2. normalize them into a shared schema,
+3. ask a labeling model to predict the difficulty based on context length, technicality,
+   number of facts that must be retained, and whether multi-stage memory updates are required,
+4. route the sample into the corresponding difficulty pool.
+
+This would make it easier to:
+
+- combine multiple datasets into the same benchmark family,
+- rebalance difficulty distributions over time,
+- support both natural-language and code-oriented long-context tracks,
+- analyze where a model starts to fail as context pressure increases.
+
+A natural-language version of this pipeline could combine sources such as:
+
+- `LongBench v2`
+- `Loong`
+- `NovelQA`
+- `QuALITY`
+- `QASPER`
+- `PeerQA`
+- `RULER`
+
+A code-focused version could later combine:
+
+- `RepoQA`
+- `LongCodeBench`
+- `LongCodeQA`
+- `LONGCODEU`
+- `Long Code Arena`
+- `CrossCodeEval`
+
+The current runtime does **not** depend on this labeling pipeline yet. For stability and
+submission safety, the environment still uses the existing task setup and deterministic defaults,
+but the code for normalized sample curation and optional LLM-assisted labeling now exists under
+`data/`.
+
+Key modules:
+
+- `data/schema.py`
+  Canonical normalized sample schema.
+
+- `data/pipeline.py`
+  Offline normalization utilities and source configuration scaffolding.
+
+- `data/labeling.py`
+  Heuristic and optional LLM-assisted difficulty labeling for curation workflows.
+
+---
+
 ## API
 
 | Endpoint | Method | Description |
