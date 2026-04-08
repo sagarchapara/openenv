@@ -170,7 +170,7 @@ class SummarizationEnvironment(Environment):
                            f"Now, answer the following question based ONLY on this summary:\n{self._question}"
             }
             # Keep system prompt if it exists, otherwise use task default
-            system_msg = self._messages[0] if self._messages and self._messages[0]["role"] == "system" else {"role": "system", "content": task.get_system_prompt()}
+            system_msg = self._messages[0] if self._messages and self._messages[0]["role"] == "system" else {"role": "system", "content": task.get_system_prompt(persona=self._persona)}
             self._messages = [system_msg, summary_msg]
             
             return self._make_observation(done=False, reward=None)
@@ -188,7 +188,7 @@ class SummarizationEnvironment(Environment):
                 "content": f"Here is the combined summary of the document:\n\n{self._summary}\n\n"
                            f"Now, answer the following question based ONLY on this summary:\n{self._question}"
             }
-            system_msg = self._messages[0] if self._messages and self._messages[0]["role"] == "system" else {"role": "system", "content": task.get_system_prompt()}
+            system_msg = self._messages[0] if self._messages and self._messages[0]["role"] == "system" else {"role": "system", "content": task.get_system_prompt(persona=self._persona)}
             self._messages = [system_msg, summary_msg]
             
             return self._make_observation(done=False, reward=None)
@@ -218,6 +218,8 @@ class SummarizationEnvironment(Environment):
             step_type=self._step_type,
             context_length=self._context_length,
             question=self._question,
+            category=self._category,
+            persona=self._persona,
         )
 
     # ------------------------------------------------------------------
@@ -235,9 +237,9 @@ class SummarizationEnvironment(Environment):
             task_name=self._task_name,
             context_length=self._context_length,
             truncation_ratio=self._truncation_ratio,
+            category=self._category,
+            persona=self._persona,
             metadata={
-                "category": self._category,
-                "persona": self._persona,
                 "step_num": self._step_num,
             },
         )

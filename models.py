@@ -30,6 +30,8 @@ class SummarizationObservation(Observation):
     metadata: Dict[str, Any] = Field(
         default_factory=dict, description="Additional task/episode metadata"
     )
+    category: Optional[str] = Field(default=None, description="Document category")
+    persona: Optional[str] = Field(default=None, description="Assigned expert persona")
 
 
 class SummarizationState(State):
@@ -39,3 +41,5 @@ class SummarizationState(State):
     step_type: str = Field(default="summarize")
     context_length: int = Field(default=0)
     question: Optional[str] = Field(default=None)
+    category: Optional[str] = Field(default=None)
+    persona: Optional[str] = Field(default=None)
