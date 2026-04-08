@@ -58,6 +58,8 @@ class SummarizationEnvironment(Environment):
         self._question: Optional[str] = None
         self._context_length: int = 0
         self._truncation_ratio: float = 0.7
+        self._category: Optional[str] = None
+        self._source_type: Optional[str] = None
         # Hard task only: second chunk shown after first summary
         self._hard_chunk2: Optional[str] = None
 
@@ -110,6 +112,8 @@ class SummarizationEnvironment(Environment):
         self._ground_truth_list = sample["answer_list"]
         self._context_length = len(sample["context"])
         self._truncation_ratio = sample["truncation_ratio"]
+        self._category = sample.get("category")
+        self._source_type = sample.get("source_type")
 
         # Hard task: store second chunk for step 2
         if task_name == "hard" and "chunk2" in sample:
@@ -180,6 +184,7 @@ class SummarizationEnvironment(Environment):
                 ground_truth_list=self._ground_truth_list,
                 summary=self._summary,
                 task_name=self._task_name,
+                question=self._question,
             )
             self._step_type = "done"
             return self._make_observation(done=True, reward=reward)
@@ -196,6 +201,8 @@ class SummarizationEnvironment(Environment):
             step_type=self._step_type,
             context_length=self._context_length,
             question=self._question,
+            category=self._category,
+            source_type=self._source_type,
         )
 
     # ------------------------------------------------------------------
@@ -213,6 +220,8 @@ class SummarizationEnvironment(Environment):
             task_name=self._task_name,
             context_length=self._context_length,
             truncation_ratio=self._truncation_ratio,
+            category=self._category,
+            source_type=self._source_type,
         )
 
     def metadata(self) -> Dict[str, Any]:
@@ -227,4 +236,5 @@ class SummarizationEnvironment(Environment):
             "tasks": ["easy", "medium", "hard"],
             "action_space": "Text (summary or answer)",
             "reward_range": [0.0, 1.0],
+            "content_metadata": ["category", "source_type"],
         }

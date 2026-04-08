@@ -27,6 +27,14 @@ class SummarizationObservation(Observation):
     truncation_ratio: float = Field(
         default=0.7, description="Fraction of context shown to the model"
     )
+    category: Optional[str] = Field(
+        default=None,
+        description="Coarse content domain such as history, science, geography, or software",
+    )
+    source_type: Optional[str] = Field(
+        default=None,
+        description="Source style such as encyclopedic_passage, long_form_reference, or scientific_paper",
+    )
 
 
 class SummarizationState(State):
@@ -36,3 +44,5 @@ class SummarizationState(State):
     step_type: str = Field(default="summarize")
     context_length: int = Field(default=0)
     question: Optional[str] = Field(default=None)
+    category: Optional[str] = Field(default=None)
+    source_type: Optional[str] = Field(default=None)

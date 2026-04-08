@@ -170,11 +170,14 @@ class MediumTask(BaseSummarizationTask):
 
         context = item["context"]
         cutoff = int(len(context) * TRUNCATION_RATIO)
+        category = self.infer_category(item["question"])
 
         return {
             "context": context,
             "truncated_context": context[:cutoff],
             "truncation_ratio": TRUNCATION_RATIO,
+            "category": category,
+            "source_type": "long_form_reference",
             "question": item["question"],
             "answer": item["answer_list"][0],
             "answer_list": item["answer_list"],
@@ -185,8 +188,8 @@ class MediumTask(BaseSummarizationTask):
         return (
             f"Here is a document excerpt ({pct}% of the full text):\n\n"
             f"{truncated_context}\n\n"
-            "Please summarize the key information. Pay special attention to: "
-            "specific names, dates, numbers, causal relationships, and any claims "
-            "that could be the subject of a factual question. Keep your summary "
-            "under 200 words while preserving all important details."
+            "Produce a retrieval-safe summary for a downstream assistant. Preserve "
+            "specific names, dates, numbers, causal relationships, and claims that "
+            "are likely to be queried later. Keep the summary under 200 words while "
+            "retaining the details needed for factual QA."
         )

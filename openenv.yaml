@@ -61,6 +61,12 @@ observation_space:
   truncation_ratio:
     type: float
     description: "Fraction of context shown to the model (0.55–0.70)"
+  category:
+    type: string
+    description: "Coarse content domain such as history, science, geography, or scientific_research"
+  source_type:
+    type: string
+    description: "Source style such as encyclopedic_passage, long_form_reference, or scientific_paper"
   done:
     type: boolean
   reward:
@@ -71,3 +77,5 @@ observation_space:
 reward_shaping:
   primary: "Token-level F1 score between predicted answer and ground-truth answers"
   conciseness_bonus: "Up to +0.05 for summaries under 150 words when the answer is correct"
+  optional_llm_grader: "When USE_LLM_GRADER=true, blends deterministic answer grading with an auxiliary LLM summary-quality score"
+  configurability: "Reward thresholds, bonuses, and hybrid weights can be tuned via GRADER_* environment variables"

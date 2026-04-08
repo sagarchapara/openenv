@@ -165,11 +165,14 @@ class EasyTask(BaseSummarizationTask):
 
         context = item["context"]
         cutoff = int(len(context) * TRUNCATION_RATIO)
+        category = self.infer_category(item["question"])
 
         return {
             "context": context,
             "truncated_context": context[:cutoff],
             "truncation_ratio": TRUNCATION_RATIO,
+            "category": category,
+            "source_type": "encyclopedic_passage",
             "question": item["question"],
             "answer": item["answer_list"][0],
             "answer_list": item["answer_list"],

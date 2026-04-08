@@ -228,6 +228,8 @@ class HardTask(BaseSummarizationTask):
             "chunk1": chunk1,
             "chunk2": chunk2,
             "truncation_ratio": TRUNCATION_RATIO,
+            "category": "scientific_research",
+            "source_type": "scientific_paper",
             "question": item["question"],
             "answer": item["answer_list"][0],
             "answer_list": item["answer_list"],
