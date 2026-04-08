@@ -80,19 +80,14 @@ def compute_reward(
 ) -> float:
     """Compute final reward for an episode.
 
-    For easy/hard tasks: token-level F1 score (0.0–1.0).
-    For medium task (multiple choice): exact match (0.0 or 1.0).
+    For all tasks: token-level F1 score (0.0–1.0).
 
     A small conciseness bonus (+0.05) is applied when the model answers
     correctly AND the summary is reasonably compact (<= 300 words).
     This encourages learning to summarize efficiently.
     """
-    if task_name == "medium":
-        # Multiple-choice: reward is 1.0 for correct option, 0.0 otherwise
-        base_reward = best_exact_match_against_list(predicted, ground_truth_list)
-    else:
-        # Extractive/free-form QA: token-level F1
-        base_reward = best_f1_against_list(predicted, ground_truth_list)
+    # Extractive/free-form QA: token-level F1
+    base_reward = best_f1_against_list(predicted, ground_truth_list)
 
     # Conciseness bonus: reward shorter summaries when the answer is correct
     conciseness_bonus = 0.0

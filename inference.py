@@ -47,6 +47,9 @@ MAX_TOKENS_SUMMARY = 400
 MAX_TOKENS_ANSWER = 150
 TEMPERATURE = 0.3
 EPISODES_PER_TASK = 3  # run multiple episodes per task for stable avg reward
+MAX_STEPS_PER_EPISODE = 30  # safety guard to avoid infinite loops if env never returns done=true
+DEBUG_LLM = os.environ.get("DEBUG_LLM", "0") == "1"
+DEBUG_ENV = os.environ.get("DEBUG_ENV", "0") == "1"
 
 # ── Logging helpers ────────────────────────────────────────────────────────────
 
@@ -74,6 +77,10 @@ def log_end(task: str, episode_id: str, total_steps: int, final_reward: float):
 
 def log_error(task: str, error: str):
     print(f"[ERROR] {json.dumps({'task': task, 'error': error})}", flush=True)
+
+
+def log_debug(tag: str, payload: dict):
+    print(f"[DEBUG] {json.dumps({'tag': tag, **payload}, default=str)}", flush=True)
 
 
 # ── Environment helpers ────────────────────────────────────────────────────────
@@ -111,6 +118,19 @@ def parse_obs(data: dict) -> dict:
 # ── LLM call ──────────────────────────────────────────────────────────────────
 
 
+def extract_text_from_content(content) -> str:
+    """Handle providers that return either plain text or structured content parts."""
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text":
+                parts.append((item.get("text") or "").strip())
+        return "\n".join(p for p in parts if p).strip()
+    return ""
+
+
 def call_llm(client: OpenAI, messages: list, step_type: str) -> str:
     max_tokens = MAX_TOKENS_SUMMARY if step_type == "summarize" else MAX_TOKENS_ANSWER
     response = client.chat.completions.create(
@@ -119,7 +139,37 @@ def call_llm(client: OpenAI, messages: list, step_type: str) -> str:
         max_tokens=max_tokens,
         temperature=TEMPERATURE,
     )
-    return response.choices[0].message.content.strip()
+    choice = response.choices[0]
+    content = choice.message.content
+    text = extract_text_from_content(content)
+
+    if DEBUG_LLM:
+        raw_msg = {}
+        if hasattr(choice.message, "model_dump"):
+            raw_msg = choice.message.model_dump()
+        log_debug(
+            "llm_response",
+            {
+                "step_type": step_type,
+                "finish_reason": getattr(choice, "finish_reason", None),
+                "content_type": type(content).__name__,
+                "content_preview": str(content)[:240],
+                "parsed_text_preview": text[:240],
+                "raw_message": raw_msg,
+            },
+        )
+
+    return text
+
+
+def normalize_action_text(action_text: str, step_type: str) -> str:
+    """Ensure we always send usable text to the environment."""
+    text = (action_text or "").strip()
+    if text.lower() in {"", "none", "null", "n/a"}:
+        if step_type == "answer":
+            return "I don't know."
+        return "No summary available."
+    return text
 
 
 # ── Episode runner ─────────────────────────────────────────────────────────────
@@ -138,15 +188,37 @@ def run_episode(client: OpenAI, task_name: str, seed: int) -> float:
         final_reward = 0.0
 
         while not obs.get("done", False):
+            if step_num >= MAX_STEPS_PER_EPISODE:
+                raise RuntimeError(
+                    f"Episode exceeded max steps ({MAX_STEPS_PER_EPISODE}) without done=true"
+                )
             step_num += 1
             step_type = obs.get("step_type", "summarize")
             messages = obs.get("messages", [])
 
             action_text = call_llm(client, messages, step_type)
-            log_step(step_num, step_type, action_text, obs.get("reward"))
+            action_text = normalize_action_text(action_text, step_type)
 
             raw = env_step(action_text)
-            obs = parse_obs(raw)
+            next_obs = parse_obs(raw)
+
+            if DEBUG_ENV:
+                log_debug(
+                    "env_step",
+                    {
+                        "step_num": step_num,
+                        "step_type": step_type,
+                        "action_preview": action_text[:120],
+                        "raw_done": raw.get("done"),
+                        "raw_reward": raw.get("reward"),
+                        "obs_done": next_obs.get("done"),
+                        "obs_reward": next_obs.get("reward"),
+                        "next_step_type": next_obs.get("step_type"),
+                    },
+                )
+
+            log_step(step_num, step_type, action_text, next_obs.get("reward"))
+            obs = next_obs
 
         final_reward = obs.get("reward") or 0.0
         episode_id_end = obs.get("metadata", {}).get("episode_id", episode_id)
