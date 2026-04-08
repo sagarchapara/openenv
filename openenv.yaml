@@ -42,12 +42,12 @@ endpoints:
   schema: "GET /schema"
 
 action_space:
-  type: text
+  type: string
   description: "Free-form text response (summary or answer)"
 
 observation_space:
   messages:
-    type: "array of {role, content} dicts"
+    type: array
     description: "Full conversation history in OpenAI chat format"
   step_type:
     type: string

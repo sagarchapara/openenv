@@ -218,9 +218,10 @@ class HardTask(BaseSummarizationTask):
         total_len = len(context)
 
         # Split into two roughly equal chunks (each ~27.5% of full context)
-        mid = total_len // 2
+        cutoff = int(total_len * TRUNCATION_RATIO)
+        mid = cutoff // 2
         chunk1 = context[:mid]
-        chunk2 = context[mid : int(total_len * TRUNCATION_RATIO)]
+        chunk2 = context[mid:cutoff]
 
         return {
             "context": context,

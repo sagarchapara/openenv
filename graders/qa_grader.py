@@ -87,12 +87,8 @@ def compute_reward(
     correctly AND the summary is reasonably compact (<= 300 words).
     This encourages learning to summarize efficiently.
     """
-    if task_name == "medium":
-        # Multiple-choice: reward is 1.0 for correct option, 0.0 otherwise
-        base_reward = best_exact_match_against_list(predicted, ground_truth_list)
-    else:
-        # Extractive/free-form QA: token-level F1
-        base_reward = best_f1_against_list(predicted, ground_truth_list)
+    # Extractive/free-form QA (used for all easy, medium, hard tasks): token-level F1
+    base_reward = best_f1_against_list(predicted, ground_truth_list)
 
     # Conciseness bonus: reward shorter summaries when the answer is correct
     conciseness_bonus = 0.0

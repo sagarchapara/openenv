@@ -30,8 +30,10 @@ try:\
     from datasets import load_dataset;\
     load_dataset('rajpurkar/squad', split='validation[:200]');\
     print('SQuAD cached.');\
+    load_dataset('allenai/qasper', split='validation', trust_remote_code=True);\
+    print('QASPER cached.');\
 except Exception as e:\
-    print(f'SQuAD cache skipped: {e}');\
+    print(f'Dataset cache skipped: {e}');\
 " || true
 
 # Hugging Face Spaces uses port 7860

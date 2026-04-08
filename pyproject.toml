@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openenv-long-context-summarization"
+version = "1.0.0"
+description = "Long Context Summarization environment for OpenEnv"
+authors = [
+  { name="Hackathon Team" }
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "openenv-core>=0.2.0",
+    "requests",
+    "openai"
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["server", "tasks", "graders"]
+include = [
+    "models.py",
+    "client.py",
+    "openenv.yaml",
+    "README.md"
+]
