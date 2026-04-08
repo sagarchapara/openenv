@@ -7,6 +7,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from openenv.core.env_server import create_fastapi_app
 from server.environment import SummarizationEnvironment
+from models import SummarizationAction, SummarizationObservation
 
-env = SummarizationEnvironment()
-app = create_fastapi_app(env)
+app = create_fastapi_app(
+    SummarizationEnvironment, 
+    action_cls=SummarizationAction, 
+    observation_cls=SummarizationObservation
+)
