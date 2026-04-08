@@ -11,6 +11,7 @@ import random
 import sys
 import os
 import logging
+import random
 from typing import Optional, List, Dict, Any
 
 # Allow imports from project root when running from server/
@@ -50,6 +51,7 @@ class SummarizationEnvironment(Environment):
     def _reset_episode_state(self):
         self._episode_id: Optional[str] = None
         self._step_count: int = 0
+        self._step_num: int = 0
         self._task_name: str = "easy"
         self._step_type: str = "summarize"
         self._messages: List[Dict[str, str]] = []
@@ -60,6 +62,8 @@ class SummarizationEnvironment(Environment):
         self._truncation_ratio: float = 0.7
         # Hard task only: second chunk shown after first summary
         self._hard_chunk2: Optional[str] = None
+        self._persona: str = "default"
+        self._category: str = "General"
 
     # ------------------------------------------------------------------
     # OpenEnv API
@@ -94,6 +98,9 @@ class SummarizationEnvironment(Environment):
 
         rng_seed = seed
         task = self._tasks[task_name]
+        self._summary = ""
+        self._persona = random.choice(list(task.PERSONAS.keys()))
+
         sample = task.get_sample(seed=rng_seed)
 
         # Store episode data
@@ -101,6 +108,7 @@ class SummarizationEnvironment(Environment):
         self._ground_truth_list = sample["answer_list"]
         self._context_length = len(sample["context"])
         self._truncation_ratio = sample["truncation_ratio"]
+        self._category = sample.get("category", "General")
 
         # Hard task: store second chunk for step 2
         if task_name == "hard" and "chunk2" in sample:
@@ -111,19 +119,21 @@ class SummarizationEnvironment(Environment):
             first_chunk = sample["truncated_context"]
 
         # Build initial conversation
-        system_msg = {"role": "system", "content": task.get_system_prompt()}
+        system_msg = {"role": "system", "content": task.get_system_prompt(persona=self._persona)}
         user_msg = {
             "role": "user",
             "content": task.get_summarize_prompt(first_chunk, self._truncation_ratio),
         }
         self._messages = [system_msg, user_msg]
         self._step_type = "summarize"
+        self._step_num = 1
 
         return self._make_observation(done=False, reward=None)
 
     def step(self, action: SummarizationAction) -> SummarizationObservation:
         """Process one agent action and return the next observation."""
         self._step_count += 1
+        self._step_num += 1
         response = action.response.strip()
 
         # Append model response to conversation history
@@ -134,6 +144,7 @@ class SummarizationEnvironment(Environment):
         # ── Summarize step ─────────────────────────────────────────────
         if self._step_type == "summarize":
             self._summary = response
+            logger.info(f"Summary received. Transitioning from {self._step_type} for task {self._task_name}")
 
             if self._task_name == "hard" and self._hard_chunk2 is not None:
                 # Hard task: move to update_summary step with second chunk
@@ -149,29 +160,49 @@ class SummarizationEnvironment(Environment):
 
             # Easy / medium: move directly to answer step
             self._step_type = "answer"
-            self._messages.append(
-                {"role": "user", "content": task.get_answer_prompt(self._question)}
-            )
+            print(f">>> TRANSITION: step_type=answer, task={self._task_name}")
+            
+            # RE-INITIALIZE messages for the answer step to help models focus
+            # We provide only system prompt + summary + question
+            summary_msg = {
+                "role": "user", 
+                "content": f"Here is the summary of the document:\n\n{self._summary}\n\n"
+                           f"Now, answer the following question based ONLY on this summary:\n{self._question}"
+            }
+            # Keep system prompt if it exists, otherwise use task default
+            system_msg = self._messages[0] if self._messages and self._messages[0]["role"] == "system" else {"role": "system", "content": task.get_system_prompt()}
+            self._messages = [system_msg, summary_msg]
+            
             return self._make_observation(done=False, reward=None)
 
         # ── Update-summary step (hard task only) ───────────────────────
         if self._step_type == "update_summary":
             self._summary = response  # updated combined summary
+            print(f">>> TRANSITION: summary updated for hard task. Moving to answer.")
             self._step_type = "answer"
             assert isinstance(task, HardTask)
-            self._messages.append(
-                {"role": "user", "content": task.get_answer_prompt(self._question)}
-            )
+            
+            # Format combined summary for the model
+            summary_msg = {
+                "role": "user",
+                "content": f"Here is the combined summary of the document:\n\n{self._summary}\n\n"
+                           f"Now, answer the following question based ONLY on this summary:\n{self._question}"
+            }
+            system_msg = self._messages[0] if self._messages and self._messages[0]["role"] == "system" else {"role": "system", "content": task.get_system_prompt()}
+            self._messages = [system_msg, summary_msg]
+            
             return self._make_observation(done=False, reward=None)
 
         # ── Answer step ────────────────────────────────────────────────
         if self._step_type == "answer":
+            print(f">>> ACTION: answer received. Computing reward...")
             reward = compute_reward(
                 predicted=response,
                 ground_truth_list=self._ground_truth_list,
                 summary=self._summary,
                 task_name=self._task_name,
             )
+            logger.info(f"Answer received. Reward: {reward}. Terminating episode.")
             self._step_type = "done"
             return self._make_observation(done=True, reward=reward)
 
@@ -204,6 +235,11 @@ class SummarizationEnvironment(Environment):
             task_name=self._task_name,
             context_length=self._context_length,
             truncation_ratio=self._truncation_ratio,
+            metadata={
+                "category": self._category,
+                "persona": self._persona,
+                "step_num": self._step_num,
+            },
         )
 
     def metadata(self) -> Dict[str, Any]:
