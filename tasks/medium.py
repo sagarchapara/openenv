@@ -169,12 +169,27 @@ class MediumTask(BaseSummarizationTask):
         item = rng.choice(self._samples)
 
         context = item["context"]
-        cutoff = int(len(context) * TRUNCATION_RATIO)
+        
+        # Tighter dynamic truncation for medium (60% to 70%)
+        ratio = rng.uniform(0.60, 0.70)
+        cutoff = int(len(context) * ratio)
+
+        # Basic categorization
+        q = item["question"].lower()
+        if any(w in q for w in ["who", "born", "king", "queen", "empire", "war"]):
+            cat = "History"
+        elif any(w in q for w in ["what", "how", "process", "science", "physics", "ai"]):
+            cat = "Science/Tech"
+        elif any(w in q for w in ["politics", "government", "law", "minister", "parliament"]):
+            cat = "Politics"
+        else:
+            cat = "General"
 
         return {
             "context": context,
             "truncated_context": context[:cutoff],
-            "truncation_ratio": TRUNCATION_RATIO,
+            "truncation_ratio": ratio,
+            "category": cat,
             "question": item["question"],
             "answer": item["answer_list"][0],
             "answer_list": item["answer_list"],
@@ -183,10 +198,9 @@ class MediumTask(BaseSummarizationTask):
     def get_summarize_prompt(self, truncated_context: str, truncation_ratio: float) -> str:
         pct = int(truncation_ratio * 100)
         return (
-            f"Here is a document excerpt ({pct}% of the full text):\n\n"
+            f"Here is a medium-length document excerpt ({pct}% of full text):\n\n"
             f"{truncated_context}\n\n"
-            "Please summarize the key information. Pay special attention to: "
-            "specific names, dates, numbers, causal relationships, and any claims "
-            "that could be the subject of a factual question. Keep your summary "
-            "under 200 words while preserving all important details."
+            "Produce an information-dense briefing. Focus strictly on names, dates, "
+            "metrics, and specific causal relationships necessary for factual QA. "
+            "Keep the summary structured and under 180 words."
         )

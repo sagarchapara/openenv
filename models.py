@@ -27,6 +27,9 @@ class SummarizationObservation(Observation):
     truncation_ratio: float = Field(
         default=0.7, description="Fraction of context shown to the model"
     )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional task/episode metadata"
+    )
 
 
 class SummarizationState(State):

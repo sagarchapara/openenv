@@ -104,6 +104,14 @@ FALLBACK_SAMPLES: List[Dict[str, Any]] = [
     },
 ]
 
+DISTRACTORS: List[str] = [
+    "The institutional framework for sustainable development focuses on the integration of economic, social, and environmental pillars.",
+    "Data normalization procedures were conducted using a localized variant of the standard deviation method to ensure cross-cluster consistency.",
+    "Prior research into the thermodynamic properties of sub-strata indicates a potential for energy loss at the boundary layer.",
+    "The atmospheric composition of early planetary systems was likely dominated by hydrogen and helium before the onset of secondary outgassing.",
+    "Economic modeling suggest that a 2% shift in the interest rate leads to a non-linear response in the housing market over 24 months.",
+]
+
 TRUNCATION_RATIO = 0.55  # Show 55% total; split into two ~27.5% chunks
 
 
@@ -223,12 +231,21 @@ class HardTask(BaseSummarizationTask):
         chunk1 = context[:mid]
         chunk2 = context[mid:cutoff]
 
+        # Inject Distractor Noise (30% chance per chunk)
+        if rng.random() < 0.3:
+            noise = rng.choice(DISTRACTORS)
+            chunk1 = f"{chunk1}\n\n[SUPPLEMENTAL DATA]: {noise}"
+        if rng.random() < 0.3:
+            noise = rng.choice(DISTRACTORS)
+            chunk2 = f"{chunk2}\n\n[SUPPLEMENTAL DATA]: {noise}"
+
         return {
             "context": context,
-            "truncated_context": context[: int(total_len * TRUNCATION_RATIO)],
+            "truncated_context": context[:cutoff],
             "chunk1": chunk1,
             "chunk2": chunk2,
             "truncation_ratio": TRUNCATION_RATIO,
+            "category": "Academic/Research",
             "question": item["question"],
             "answer": item["answer_list"][0],
             "answer_list": item["answer_list"],
@@ -247,11 +264,12 @@ class HardTask(BaseSummarizationTask):
     def get_update_summary_prompt(self, chunk2: str) -> str:
         """Prompt for updating the summary with the second chunk."""
         return (
-            f"Here is the next section of the same document:\n\n"
+            f"Here is the continuous technical section of the same paper:\n\n"
             f"{chunk2}\n\n"
-            "Please update your previous summary to incorporate the key information "
-            "from this section as well. Keep your combined summary under 300 words, "
-            "preserving all important facts from both sections."
+            "CRITICAL TASK: Integrate this new information into your existing summary. "
+            "Discard any supplemental data that does not directly relate to the main findings. "
+            "Ensure the combined summary remains structured and under 300 words, "
+            "preserving all metrics from both sections."
         )
 
     def get_answer_prompt(self, question: str) -> str:

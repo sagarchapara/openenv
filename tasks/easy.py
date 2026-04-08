@@ -164,12 +164,27 @@ class EasyTask(BaseSummarizationTask):
         item = rng.choice(self._samples)
 
         context = item["context"]
-        cutoff = int(len(context) * TRUNCATION_RATIO)
+        
+        # Dynamic truncation (65% to 75%)
+        ratio = rng.uniform(0.65, 0.75)
+        cutoff = int(len(context) * ratio)
+
+        # Basic categorization
+        q = item["question"].lower()
+        if any(w in q for w in ["who", "born", "king", "queen", "empire", "war"]):
+            cat = "History"
+        elif any(w in q for w in ["what is", "process", "science", "chemical", "atom", "cell"]):
+            cat = "Science"
+        elif any(w in q for w in ["where", "city", "country", "river", "mountain"]):
+            cat = "Geography"
+        else:
+            cat = "General"
 
         return {
             "context": context,
             "truncated_context": context[:cutoff],
-            "truncation_ratio": TRUNCATION_RATIO,
+            "truncation_ratio": ratio,
+            "category": cat,
             "question": item["question"],
             "answer": item["answer_list"][0],
             "answer_list": item["answer_list"],

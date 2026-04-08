@@ -90,13 +90,16 @@ def compute_reward(
     # Extractive/free-form QA (used for all easy, medium, hard tasks): token-level F1
     base_reward = best_f1_against_list(predicted, ground_truth_list)
 
-    # Conciseness bonus: reward shorter summaries when the answer is correct
+    # Conciseness bonus: reward shorter, information-dense summaries
     conciseness_bonus = 0.0
-    if base_reward > 0.5 and summary is not None:
-        summary_word_count = len(summary.split())
-        if summary_word_count <= 150:
+    if base_reward > 0.8 and summary is not None:
+        words = len(summary.split())
+        # Maximum bonus (+0.05) at 100 words or fewer
+        # Sliding scale down to +0.00 at 300 words
+        if words <= 100:
             conciseness_bonus = 0.05
-        elif summary_word_count <= 300:
-            conciseness_bonus = 0.02
+        elif words <= 300:
+            conciseness_bonus = 0.05 * (1 - (words - 100) / 200)
 
+    # Final reward is capped at 1.0
     return min(1.0, base_reward + conciseness_bonus)
