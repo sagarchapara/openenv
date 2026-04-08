@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "long-context-summarization-env"
+version = "1.0.0"
+description = "OpenEnv environment for long-context summarization and QA"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "openenv-core>=0.2.3",
+  "fastapi>=0.104.0",
+  "uvicorn[standard]>=0.24.0",
+  "pydantic>=2.0.0",
+  "datasets>=2.14.0",
+  "openai>=1.0.0",
+  "requests>=2.31.0",
+  "huggingface-hub>=0.19.0",
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[tool.setuptools]
+py-modules = ["client", "inference", "models"]
+
+[tool.setuptools.packages.find]
+include = ["server", "tasks", "graders"]

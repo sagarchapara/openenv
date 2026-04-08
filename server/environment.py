@@ -38,8 +38,8 @@ class SummarizationEnvironment(Environment):
     SUPPORTS_CONCURRENT_SESSIONS = False
 
     def __init__(self):
-        logger.info("Initialising SummarizationEnvironment — loading datasets...")
-        self._tasks = {name: get_task(name) for name in ("easy", "medium", "hard")}
+        logger.info("Initialising SummarizationEnvironment...")
+        self._tasks: Dict[str, Any] = {}
         self._reset_episode_state()
         logger.info("Environment ready.")
 
@@ -60,6 +60,15 @@ class SummarizationEnvironment(Environment):
         self._truncation_ratio: float = 0.7
         # Hard task only: second chunk shown after first summary
         self._hard_chunk2: Optional[str] = None
+
+    def _get_task(self, task_name: str):
+        """Lazily initialize tasks so app startup stays fast on Spaces."""
+        task = self._tasks.get(task_name)
+        if task is None:
+            logger.info("Loading task '%s'...", task_name)
+            task = get_task(task_name)
+            self._tasks[task_name] = task
+        return task
 
     # ------------------------------------------------------------------
     # OpenEnv API
@@ -93,7 +102,7 @@ class SummarizationEnvironment(Environment):
         self._episode_id = episode_id or f"ep_{random.randint(10000, 99999)}"
 
         rng_seed = seed
-        task = self._tasks[task_name]
+        task = self._get_task(task_name)
         sample = task.get_sample(seed=rng_seed)
 
         # Store episode data
@@ -129,7 +138,7 @@ class SummarizationEnvironment(Environment):
         # Append model response to conversation history
         self._messages.append({"role": "assistant", "content": response})
 
-        task = self._tasks[self._task_name]
+        task = self._get_task(self._task_name)
 
         # ── Summarize step ─────────────────────────────────────────────
         if self._step_type == "summarize":
